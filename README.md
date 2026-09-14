@@ -10,34 +10,46 @@ Aplicativo desktop para Windows que lê arquivos DXF de loteamentos, identifica 
 - validação de numeração contínua dos lotes;
 - geração de Excel formatado com totais e agrupamentos;
 - execução em modo desktop no Windows;
-- funcionamento local, sem necessidade de API externa.
+- processamento local, sem necessidade de API externa.
 
-## Arquivos principais
+## Executável único para Windows
+
+A partir da versão `v1.1.0`, o AutoExcel é publicado como um único arquivo:
+
+`AutoExcel-by-AB-Alves.exe`
+
+Esse executável já leva dentro dele o Python, Streamlit, pywebview, pandas, ezdxf, openpyxl e os demais componentes necessários ao aplicativo.
+
+No computador do usuário não é necessário:
+
+- instalar Python;
+- instalar bibliotecas;
+- executar `pip`;
+- extrair ZIP;
+- executar arquivo `.bat` de instalação;
+- baixar dependências adicionais.
+
+Basta baixar o `.exe` da página **Releases** e executá-lo.
+
+## Arquivos principais do código-fonte
 
 - `app.py` — interface e fluxo principal;
 - `dxf_reader.py` — leitura e interpretação do DXF;
 - `core.py` — geração e formatação do Excel;
-- `desktop_launcher.py` — inicialização da janela desktop;
-- `requirements.txt` — dependências Python;
-- `INICIAR_APP.bat` — instalação e inicialização no Windows;
-- `scripts/build_windows.ps1` — geração do executável e pacote Windows;
-- `.github/workflows/build-windows.yml` — automação do build no GitHub Actions.
+- `desktop_launcher.py` — inicialização da janela e do servidor interno empacotado;
+- `requirements.txt` — dependências usadas no build;
+- `scripts/build_windows.ps1` — geração do executável standalone;
+- `.github/workflows/build-windows.yml` — build e publicação automática no GitHub Actions.
 
-## Build automático para Windows
+## Build automático
 
-O repositório possui um workflow do GitHub Actions chamado **Build Windows**.
+O workflow **Build Windows** compila o aplicativo em um runner Windows usando PyInstaller em modo `onefile`.
 
-Ele é executado automaticamente quando alterações relevantes chegam à branch `main` e também pode ser iniciado manualmente em **Actions → Build Windows → Run workflow**.
+Ao terminar, ele publica diretamente o arquivo:
 
-Ao terminar, o workflow publica o artefato:
+`AutoExcel-by-AB-Alves.exe`
 
-`AutoExcel-by-AB-Alves-Windows.zip`
-
-O pacote contém o executável **AutoExcel by AB Alves.exe**, os arquivos necessários do aplicativo e o instalador de primeira execução.
-
-### Criar uma versão oficial
-
-Ao criar e enviar uma tag no formato `v*`, por exemplo `v1.0.0`, o mesmo workflow também cria automaticamente uma **GitHub Release** e anexa o pacote Windows à versão.
+Quando o valor de `RELEASE_VERSION` é alterado para uma nova versão, o GitHub cria automaticamente uma Release e anexa esse executável.
 
 ## Autor
 
