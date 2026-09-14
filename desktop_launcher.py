@@ -11,22 +11,13 @@ import urllib.request
 
 APP_TITLE = "AutoExcel by AB Alves"
 APP_ID = "ABAlves.AutoExcel"
-
-# When frozen by PyInstaller, the EXE stays in the app folder while
-# PyInstaller extracts Python internals elsewhere. Always use the EXE folder
-# for app.py, the icon and the local virtual environment.
-if getattr(sys, "frozen", False):
-    APP_DIR = Path(sys.executable).resolve().parent
-else:
-    APP_DIR = Path(__file__).resolve().parent
-
-APP_FILE = APP_DIR / "app.py"
-ICON_FILE = APP_DIR / "app_icon.ico"
-VENV_PYTHON = APP_DIR / ".venv_v4" / "Scripts" / "python.exe"
+FROZEN = bool(getattr(sys, "frozen", False))
+RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+APP_FILE = RESOURCE_DIR / "app.py"
+ICON_FILE = RESOURCE_DIR / "app_icon.ico"
 
 
 def set_windows_appusermodelid() -> None:
-    """Give Windows a stable identity for taskbar grouping/icon handling."""
     if os.name != "nt":
         return
     try:
@@ -36,6 +27,8 @@ def set_windows_appusermodelid() -> None:
 
 
 def message_box(text: str, title: str = APP_TITLE) -> None:
+    if os.name != "nt":
+        return
     try:
         ctypes.windll.user32.MessageBoxW(None, text, title, 0x10)
     except Exception:
@@ -48,40 +41,30 @@ def free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def wait_for_streamlit(url: str, proc: subprocess.Popen, timeout: float = 40.0) -> bool:
+def wait_for_streamlit(url: str, proc: subprocess.Popen, timeout: float = 60.0) -> bool:
     health = f"{url}/_stcore/health"
     deadline = time.time() + timeout
     while time.time() < deadline:
         if proc.poll() is not None:
             return False
         try:
-            with urllib.request.urlopen(health, timeout=0.8) as response:
+            with urllib.request.urlopen(health, timeout=1.0) as response:
                 if 200 <= response.status < 300:
                     return True
         except Exception:
-            time.sleep(0.18)
+            time.sleep(0.2)
     return False
 
 
-def streamlit_python() -> Path:
-    # In the frozen desktop EXE, the Streamlit server must still run from the
-    # local venv, not from the frozen EXE itself.
-    if VENV_PYTHON.exists():
-        return VENV_PYTHON
+def run_embedded_streamlit(port: int) -> int:
+    """Run the bundled Streamlit app inside the same standalone EXE."""
+    if not APP_FILE.exists():
+        return 4
 
-    executable = Path(sys.executable)
-    if executable.name.lower() == "pythonw.exe":
-        candidate = executable.with_name("python.exe")
-        if candidate.exists():
-            return candidate
-    return executable
+    os.environ.setdefault("STREAMLIT_BROWSER_GATHER_USAGE_STATS", "false")
+    os.environ.setdefault("STREAMLIT_SERVER_HEADLESS", "true")
 
-
-def start_streamlit(port: int) -> subprocess.Popen:
-    python_exe = streamlit_python()
-    cmd = [
-        str(python_exe),
-        "-m",
+    sys.argv = [
         "streamlit",
         "run",
         str(APP_FILE),
@@ -91,13 +74,30 @@ def start_streamlit(port: int) -> subprocess.Popen:
         "--browser.gatherUsageStats=false",
     ]
 
+    from streamlit.web import cli as streamlit_cli
+
+    try:
+        result = streamlit_cli.main()
+        return int(result or 0)
+    except SystemExit as exc:
+        return int(exc.code or 0)
+
+
+def start_streamlit(port: int) -> subprocess.Popen:
+    if FROZEN:
+        cmd = [sys.executable, "--streamlit-server", str(port)]
+        cwd = str(Path(sys.executable).resolve().parent)
+    else:
+        cmd = [sys.executable, str(Path(__file__).resolve()), "--streamlit-server", str(port)]
+        cwd = str(Path(__file__).resolve().parent)
+
     creationflags = 0
     if os.name == "nt":
         creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
 
     return subprocess.Popen(
         cmd,
-        cwd=str(APP_DIR),
+        cwd=cwd,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -106,7 +106,6 @@ def start_streamlit(port: int) -> subprocess.Popen:
 
 
 def apply_native_window_icon() -> None:
-    """Extra Win32 fallback for title-bar and taskbar icon."""
     if os.name != "nt" or not ICON_FILE.exists():
         return
 
@@ -142,29 +141,25 @@ def apply_native_window_icon() -> None:
 
 
 def main() -> int:
+    if len(sys.argv) >= 3 and sys.argv[1] == "--streamlit-server":
+        try:
+            return run_embedded_streamlit(int(sys.argv[2]))
+        except Exception:
+            return 5
+
     set_windows_appusermodelid()
+
+    if not APP_FILE.exists():
+        message_box("O conteúdo interno do AutoExcel não foi encontrado. Baixe novamente o executável oficial.")
+        return 4
 
     try:
         import webview
     except Exception:
-        message_box(
-            "O componente da janela desktop ainda não está instalado.\n\n"
-            "Execute INICIAR_APP.bat uma vez para concluir a instalação."
-        )
+        message_box("Não foi possível carregar a janela do AutoExcel. Baixe novamente o executável oficial.")
         return 2
 
     webview.settings["ALLOW_DOWNLOADS"] = True
-
-    if not APP_FILE.exists():
-        message_box("Não encontrei app.py ao lado do AutoExcel.exe.")
-        return 4
-
-    if not VENV_PYTHON.exists() and getattr(sys, "frozen", False):
-        message_box(
-            "O ambiente local do AutoExcel não foi encontrado.\n\n"
-            "Execute INICIAR_APP.bat para reparar a instalação."
-        )
-        return 5
 
     port = free_port()
     url = f"http://127.0.0.1:{port}"
@@ -172,10 +167,7 @@ def main() -> int:
 
     try:
         if not wait_for_streamlit(url, server):
-            message_box(
-                "Não foi possível iniciar o AutoExcel.\n\n"
-                "Execute INICIAR_APP.bat para reparar a instalação."
-            )
+            message_box("Não foi possível iniciar o AutoExcel.")
             return 3
 
         webview.create_window(
