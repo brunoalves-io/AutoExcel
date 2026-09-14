@@ -69,7 +69,7 @@ def wait_for_streamlit(url: str, proc: subprocess.Popen, timeout: float = 180.0)
 
 
 def run_embedded_streamlit(port: int) -> int:
-    """Run the bundled Streamlit app in server-only mode inside the standalone EXE."""
+    """Run the bundled Streamlit server inside the standalone EXE."""
     if not APP_FILE.exists():
         write_log(f"app.py não encontrado em {APP_FILE}")
         return 4
@@ -81,42 +81,28 @@ def run_embedded_streamlit(port: int) -> int:
     os.environ["STREAMLIT_SERVER_FILE_WATCHER_TYPE"] = "none"
     os.environ["STREAMLIT_SERVER_SHOW_EMAIL_PROMPT"] = "false"
     os.environ["STREAMLIT_GLOBAL_SHOW_WARNING_ON_DIRECT_EXECUTION"] = "false"
-    # Streamlit can infer development mode inside a frozen one-file executable,
-    # which conflicts with a custom server.port. Force production mode.
     os.environ["STREAMLIT_GLOBAL_DEVELOPMENT_MODE"] = "false"
+
+    # Use Streamlit's CLI bootstrap directly. In a frozen executable this is
+    # more deterministic than the programmatic st.App API and it honors the
+    # explicit production/server settings below.
+    sys.argv = [
+        "streamlit",
+        "run",
+        str(APP_FILE),
+        "--global.developmentMode=false",
+        "--server.headless=true",
+        "--server.address=127.0.0.1",
+        f"--server.port={port}",
+        "--server.fileWatcherType=none",
+        "--browser.gatherUsageStats=false",
+    ]
 
     try:
         import streamlit as st
-
-        write_log(f"Iniciando Streamlit {getattr(st, '__version__', '?')} em 127.0.0.1:{port}")
-
-        if hasattr(st, "App"):
-            app = st.App(str(APP_FILE), debug=False)
-            app.run(
-                config={
-                    "global.developmentMode": False,
-                    "server.address": "127.0.0.1",
-                    "server.port": int(port),
-                    "server.headless": True,
-                    "server.fileWatcherType": "none",
-                    "browser.gatherUsageStats": False,
-                }
-            )
-            return 0
-
-        sys.argv = [
-            "streamlit",
-            "run",
-            str(APP_FILE),
-            "--global.developmentMode=false",
-            "--server.headless=true",
-            "--server.address=127.0.0.1",
-            f"--server.port={port}",
-            "--server.fileWatcherType=none",
-            "--browser.gatherUsageStats=false",
-        ]
         from streamlit.web import cli as streamlit_cli
 
+        write_log(f"Iniciando Streamlit {getattr(st, '__version__', '?')} em 127.0.0.1:{port} via CLI")
         result = streamlit_cli.main()
         return int(result or 0)
     except SystemExit as exc:
