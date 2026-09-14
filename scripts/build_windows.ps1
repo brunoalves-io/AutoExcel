@@ -17,6 +17,47 @@ Write-Host "Instalando dependencias..."
 python -m pip install -r requirements.txt
 python -m pip install pyinstaller pillow
 
+# Traduz diretamente o texto nativo do frontend do Streamlit usado pelo
+# file_uploader. Isso evita depender de seletores CSS internos, que podem
+# mudar entre versoes do Streamlit.
+Write-Host "Traduzindo texto nativo do uploader do Streamlit..."
+$translateUploaderScript = @'
+from pathlib import Path
+import streamlit
+import sys
+
+static_dir = Path(streamlit.__file__).resolve().parent / "static"
+if not static_dir.exists():
+    raise SystemExit(f"Diretorio static do Streamlit nao encontrado: {static_dir}")
+
+needle = " per file"
+replacement = " por arquivo"
+occurrences = 0
+changed_files = []
+
+for path in static_dir.rglob("*.js"):
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        continue
+    count = text.count(needle)
+    if count:
+        path.write_text(text.replace(needle, replacement), encoding="utf-8")
+        occurrences += count
+        changed_files.append(str(path))
+
+print(f"Ocorrencias traduzidas: {occurrences}")
+for path in changed_files:
+    print(f"  - {path}")
+
+if occurrences == 0:
+    raise SystemExit("Nao foi encontrada a string nativa ' per file' no frontend do Streamlit")
+'@
+$translateUploaderScript | python -
+if ($LASTEXITCODE -ne 0) {
+    throw "Falha ao traduzir o texto nativo do uploader do Streamlit"
+}
+
 $version = (Get-Content (Join-Path $repoRoot "RELEASE_VERSION") -Raw).Trim()
 if ([string]::IsNullOrWhiteSpace($version)) {
     throw "RELEASE_VERSION esta vazio"
