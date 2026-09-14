@@ -14,7 +14,6 @@ APP_ID = "ABAlves.AutoExcel"
 FROZEN = bool(getattr(sys, "frozen", False))
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 APP_FILE = RESOURCE_DIR / "app.py"
-ICON_FILE = RESOURCE_DIR / "app_icon.ico"
 
 
 def set_windows_appusermodelid() -> None:
@@ -106,36 +105,34 @@ def start_streamlit(port: int) -> subprocess.Popen:
 
 
 def apply_native_window_icon() -> None:
-    if os.name != "nt" or not ICON_FILE.exists():
-        return
-
-    user32 = ctypes.windll.user32
-    WM_SETICON = 0x0080
-    ICON_SMALL = 0
-    ICON_BIG = 1
-    IMAGE_ICON = 1
-    LR_LOADFROMFILE = 0x0010
-
-    hwnd = None
-    for _ in range(150):
-        try:
-            hwnd = user32.FindWindowW(None, APP_TITLE)
-        except Exception:
-            hwnd = None
-        if hwnd:
-            break
-        time.sleep(0.1)
-
-    if not hwnd:
+    """Apply the icon embedded in the standalone EXE to the pywebview window."""
+    if os.name != "nt" or not FROZEN:
         return
 
     try:
-        hicon_big = user32.LoadImageW(None, str(ICON_FILE), IMAGE_ICON, 256, 256, LR_LOADFROMFILE)
-        hicon_small = user32.LoadImageW(None, str(ICON_FILE), IMAGE_ICON, 32, 32, LR_LOADFROMFILE)
-        if hicon_small:
-            user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, hicon_small)
-        if hicon_big:
-            user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG, hicon_big)
+        user32 = ctypes.windll.user32
+        shell32 = ctypes.windll.shell32
+        WM_SETICON = 0x0080
+        ICON_SMALL = 0
+        ICON_BIG = 1
+
+        hwnd = None
+        for _ in range(150):
+            hwnd = user32.FindWindowW(None, APP_TITLE)
+            if hwnd:
+                break
+            time.sleep(0.1)
+        if not hwnd:
+            return
+
+        large = (ctypes.c_void_p * 1)()
+        small = (ctypes.c_void_p * 1)()
+        extracted = shell32.ExtractIconExW(str(Path(sys.executable).resolve()), 0, large, small, 1)
+        if extracted:
+            if small[0]:
+                user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, small[0])
+            if large[0]:
+                user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG, large[0])
     except Exception:
         pass
 
@@ -180,10 +177,9 @@ def main() -> int:
             confirm_close=False,
         )
 
-        start_kwargs = {"func": apply_native_window_icon, "debug": False}
-        if ICON_FILE.exists():
-            start_kwargs["icon"] = str(ICON_FILE)
-        webview.start(**start_kwargs)
+        # On Windows, use the icon embedded in the executable itself. This keeps
+        # Explorer, taskbar and title-bar icon rendering consistent.
+        webview.start(func=apply_native_window_icon, debug=False)
         return 0
     finally:
         if server.poll() is None:
