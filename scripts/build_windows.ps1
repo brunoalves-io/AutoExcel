@@ -24,7 +24,6 @@ Write-Host "Traduzindo texto nativo do uploader do Streamlit..."
 $translateUploaderScript = @'
 from pathlib import Path
 import streamlit
-import sys
 
 static_dir = Path(streamlit.__file__).resolve().parent / "static"
 if not static_dir.exists():
@@ -56,6 +55,60 @@ if occurrences == 0:
 $translateUploaderScript | python -
 if ($LASTEXITCODE -ne 0) {
     throw "Falha ao traduzir o texto nativo do uploader do Streamlit"
+}
+
+# Corrige a exibicao dos valores dos st.number_input em espacos estreitos,
+# especialmente os campos Area min. e Area max. no sidebar. O Streamlit reserva
+# bastante largura para os botoes -/+, deixando o texto numerico espremido.
+# Inserimos CSS diretamente no index.html nativo do frontend empacotado.
+Write-Host "Aplicando correcao visual dos campos numericos..."
+$numberInputStyleScript = @'
+from pathlib import Path
+import streamlit
+
+static_dir = Path(streamlit.__file__).resolve().parent / "static"
+index_html = static_dir / "index.html"
+if not index_html.exists():
+    raise SystemExit(f"index.html do Streamlit nao encontrado: {index_html}")
+
+marker = "autoexcel-number-input-fix"
+css = r'''
+<style id="autoexcel-number-input-fix">
+/* AutoExcel: evita corte visual de numeros em campos estreitos do sidebar. */
+div[data-testid="stNumberInput"] input {
+    font-size: 0.80rem !important;
+    padding-left: 0.45rem !important;
+    padding-right: 0.20rem !important;
+    min-width: 0 !important;
+    letter-spacing: -0.01em !important;
+}
+
+/* Mantem os controles compactos sem sacrificar a legibilidade do valor. */
+div[data-testid="stNumberInput"] button {
+    width: 1.65rem !important;
+    min-width: 1.65rem !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+</style>
+'''
+
+text = index_html.read_text(encoding="utf-8")
+if marker not in text:
+    if "</head>" not in text:
+        raise SystemExit("Tag </head> nao encontrada no index.html do Streamlit")
+    text = text.replace("</head>", css + "\n</head>", 1)
+    index_html.write_text(text, encoding="utf-8")
+
+check = index_html.read_text(encoding="utf-8")
+if marker not in check:
+    raise SystemExit("Falha ao injetar CSS dos campos numericos")
+
+print(f"CSS dos campos numericos aplicado em: {index_html}")
+'@
+$numberInputStyleScript | python -
+if ($LASTEXITCODE -ne 0) {
+    throw "Falha ao aplicar a correcao visual dos campos numericos"
 }
 
 $version = (Get-Content (Join-Path $repoRoot "RELEASE_VERSION") -Raw).Trim()
