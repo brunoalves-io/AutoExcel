@@ -31,6 +31,10 @@ No computador do usuário não é necessário:
 
 Basta baixar o `.exe` da página **Releases** e executá-lo.
 
+## Ícone do Windows
+
+A versão `v1.1.2` corrige o ícone do executável usando um arquivo `.ico` multirresolução próprio para Windows, gerado a partir da arte oficial do AutoExcel.
+
 ## Arquivos principais do código-fonte
 
 - `app.py` — interface e fluxo principal;
