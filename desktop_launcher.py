@@ -81,19 +81,20 @@ def run_embedded_streamlit(port: int) -> int:
     os.environ["STREAMLIT_SERVER_FILE_WATCHER_TYPE"] = "none"
     os.environ["STREAMLIT_SERVER_SHOW_EMAIL_PROMPT"] = "false"
     os.environ["STREAMLIT_GLOBAL_SHOW_WARNING_ON_DIRECT_EXECUTION"] = "false"
+    # Streamlit can infer development mode inside a frozen one-file executable,
+    # which conflicts with a custom server.port. Force production mode.
+    os.environ["STREAMLIT_GLOBAL_DEVELOPMENT_MODE"] = "false"
 
     try:
         import streamlit as st
 
         write_log(f"Iniciando Streamlit {getattr(st, '__version__', '?')} em 127.0.0.1:{port}")
 
-        # st.App is Streamlit's supported programmatic server API. Pass the
-        # server options explicitly so a frozen executable never falls back to
-        # port 8501 or another machine-level Streamlit configuration.
         if hasattr(st, "App"):
             app = st.App(str(APP_FILE), debug=False)
             app.run(
                 config={
+                    "global.developmentMode": False,
                     "server.address": "127.0.0.1",
                     "server.port": int(port),
                     "server.headless": True,
@@ -103,11 +104,11 @@ def run_embedded_streamlit(port: int) -> int:
             )
             return 0
 
-        # Compatibility fallback for older Streamlit builds.
         sys.argv = [
             "streamlit",
             "run",
             str(APP_FILE),
+            "--global.developmentMode=false",
             "--server.headless=true",
             "--server.address=127.0.0.1",
             f"--server.port={port}",
