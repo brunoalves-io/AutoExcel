@@ -38,13 +38,20 @@ st.markdown(
         box-shadow: 0 0 0 0.2rem rgba(22, 163, 74, 0.25) !important;
     }
 
-    /* Traduz a informação nativa do limite de upload do Streamlit. */
-    div[data-testid="stFileUploaderDropzoneInstructions"] small {
+    /* Traduz a informação nativa do limite de upload do Streamlit.
+       O Streamlit atual usa stFileDropzoneInstructions; versões anteriores
+       usavam stFileUploaderDropzoneInstructions. Mantemos os dois seletores. */
+    div[data-testid="stFileUploaderDropzoneInstructions"] small,
+    div[data-testid="stFileDropzoneInstructions"] small {
         font-size: 0 !important;
+        line-height: 0 !important;
     }
-    div[data-testid="stFileUploaderDropzoneInstructions"] small::after {
+    div[data-testid="stFileUploaderDropzoneInstructions"] small::after,
+    div[data-testid="stFileDropzoneInstructions"] small::after {
         content: "200 MB por arquivo • DXF";
         font-size: 0.875rem !important;
+        line-height: 1.25rem !important;
+        display: inline-block !important;
     }
     </style>
     """,
