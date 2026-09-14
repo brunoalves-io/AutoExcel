@@ -1,59 +1,41 @@
 # AutoExcel by AB Alves
 
-Aplicativo desktop para Windows que lê arquivos DXF de loteamentos, identifica quadras, lotes e áreas, valida a numeração e gera automaticamente uma planilha Excel no padrão do projeto.
+Aplicativo desktop para Windows que lê arquivos DXF de loteamentos, identifica quadras, lotes e áreas e gera automaticamente uma planilha Excel formatada.
 
-## Principais recursos
+## Recursos
 
 - leitura direta de arquivos `.dxf`;
 - suporte a múltiplas quadras;
-- associação geométrica de lote, área e quadra;
-- validação de numeração contínua dos lotes;
-- geração de Excel formatado com totais e agrupamentos;
-- execução em modo desktop no Windows;
-- processamento local, sem necessidade de API externa.
+- associação geométrica entre lote, área e quadra;
+- validação de numeração contínua;
+- agrupamento de áreas iguais consecutivas;
+- geração de Excel com totais e formatação;
+- processamento 100% local;
+- executável único para Windows, sem exigir Python ou dependências externas.
 
-## Executável único para Windows
-
-A partir da versão `v1.1.0`, o AutoExcel é publicado como um único arquivo:
-
-`AutoExcel-by-AB-Alves.exe`
-
-Esse executável já leva dentro dele o Python, Streamlit, pywebview, pandas, ezdxf, openpyxl e os demais componentes necessários ao aplicativo.
-
-No computador do usuário não é necessário:
-
-- instalar Python;
-- instalar bibliotecas;
-- executar `pip`;
-- extrair ZIP;
-- executar arquivo `.bat` de instalação;
-- baixar dependências adicionais.
-
-Basta baixar o `.exe` da página **Releases** e executá-lo.
-
-## Ícone do Windows
-
-A versão `v1.1.2` corrige o ícone do executável usando um arquivo `.ico` multirresolução próprio para Windows, gerado a partir da arte oficial do AutoExcel.
-
-## Arquivos principais do código-fonte
+## Estrutura do projeto
 
 - `app.py` — interface e fluxo principal;
-- `dxf_reader.py` — leitura e interpretação do DXF;
-- `core.py` — geração e formatação do Excel;
-- `desktop_launcher.py` — inicialização da janela e do servidor interno empacotado;
-- `requirements.txt` — dependências usadas no build;
-- `scripts/build_windows.ps1` — geração do executável standalone;
-- `.github/workflows/build-windows.yml` — build e publicação automática no GitHub Actions.
+- `dxf_reader.py` — leitura e interpretação dos arquivos DXF;
+- `core.py` — validação, organização dos dados e geração do Excel;
+- `desktop_launcher.py` — inicialização da janela desktop e do servidor interno;
+- `app_icon.png` — arte oficial usada para gerar o ícone do executável;
+- `requirements.txt` — dependências do projeto;
+- `scripts/build_windows.ps1` — build do executável standalone;
+- `.github/workflows/build-windows.yml` — compilação, teste e publicação automática;
+- `RELEASE_VERSION` — versão que será publicada na próxima Release.
 
-## Build automático
+## Download
 
-O workflow **Build Windows** compila o aplicativo em um runner Windows usando PyInstaller em modo `onefile`.
+Para usar o programa, não é necessário clonar o repositório nem instalar dependências.
 
-Ao terminar, ele publica diretamente o arquivo:
+Baixe o `.exe` mais recente na seção **Releases** do GitHub e execute-o no Windows.
 
-`AutoExcel-by-AB-Alves.exe`
+## Build
 
-Quando o valor de `RELEASE_VERSION` é alterado para uma nova versão, o GitHub cria automaticamente uma Release e anexa esse executável.
+O GitHub Actions compila o AutoExcel com PyInstaller em modo `onefile`, incorpora as dependências e gera um único executável para Windows.
+
+Quando `RELEASE_VERSION` recebe uma versão ainda não publicada, o workflow cria automaticamente uma nova Release e anexa o `.exe` correspondente.
 
 ## Autor
 
