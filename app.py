@@ -37,6 +37,15 @@ st.markdown(
     div[data-testid="stDownloadButton"] button:focus {
         box-shadow: 0 0 0 0.2rem rgba(22, 163, 74, 0.25) !important;
     }
+
+    /* Traduz a informação nativa do limite de upload do Streamlit. */
+    div[data-testid="stFileUploaderDropzoneInstructions"] small {
+        font-size: 0 !important;
+    }
+    div[data-testid="stFileUploaderDropzoneInstructions"] small::after {
+        content: "200 MB por arquivo • DXF";
+        font-size: 0.875rem !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
