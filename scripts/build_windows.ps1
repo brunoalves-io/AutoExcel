@@ -17,10 +17,18 @@ Write-Host "Instalando dependencias..."
 python -m pip install -r requirements.txt
 python -m pip install pyinstaller pillow
 
+$version = (Get-Content (Join-Path $repoRoot "RELEASE_VERSION") -Raw).Trim()
+if ([string]::IsNullOrWhiteSpace($version)) {
+    throw "RELEASE_VERSION esta vazio"
+}
+if (-not $version.StartsWith("v")) {
+    $version = "v$version"
+}
+
 $buildDir = Join-Path $repoRoot "build"
 $distDir = Join-Path $repoRoot "dist"
 $releaseDir = Join-Path $repoRoot "release"
-$releaseExe = Join-Path $releaseDir "AutoExcel-by-AB-Alves.exe"
+$releaseExe = Join-Path $releaseDir ("AutoExcel-by-AB-Alves-{0}.exe" -f $version)
 
 foreach ($path in @($buildDir, $distDir, $releaseDir)) {
     if (Test-Path $path) {
@@ -32,8 +40,39 @@ New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null
 New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
 
-Write-Host "Gerando executavel totalmente independente..."
-Write-Host "O PNG oficial sera convertido pelo PyInstaller/Pillow para o formato de icone nativo do Windows."
+# Gera um ICO Windows real, multi-resolucao, a partir da arte oficial.
+# Evita depender da conversao automatica de PNG do PyInstaller, que pode
+# resultar em icone generico/branco no Explorer em algumas versoes do Windows.
+$sourcePng = Join-Path $repoRoot "app_icon.png"
+$windowsIco = Join-Path $buildDir "app_icon_windows.ico"
+$iconScript = @'
+from PIL import Image
+from pathlib import Path
+import sys
+
+src = Path(sys.argv[1])
+out = Path(sys.argv[2])
+img = Image.open(src).convert("RGBA")
+
+canvas = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
+img.thumbnail((240, 240), Image.Resampling.LANCZOS)
+x = (256 - img.width) // 2
+y = (256 - img.height) // 2
+canvas.alpha_composite(img, (x, y))
+
+sizes = [(16,16), (20,20), (24,24), (32,32), (40,40), (48,48), (64,64), (96,96), (128,128), (256,256)]
+canvas.save(out, format="ICO", sizes=sizes)
+print(f"ICO criado: {out} ({out.stat().st_size} bytes)")
+'@
+$iconScript | python - $sourcePng $windowsIco
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path $windowsIco)) {
+    throw "Falha ao gerar o icone Windows multi-resolucao"
+}
+if ((Get-Item $windowsIco).Length -lt 20000) {
+    throw "ICO Windows gerado parece invalido ou incompleto"
+}
+
+Write-Host "Gerando executavel totalmente independente com ICO Windows multi-resolucao..."
 
 $pyInstallerArgs = @(
     "--noconfirm",
@@ -41,7 +80,7 @@ $pyInstallerArgs = @(
     "--onefile",
     "--windowed",
     "--name", "AutoExcel by AB Alves",
-    "--icon", (Join-Path $repoRoot "app_icon.png"),
+    "--icon", $windowsIco,
     "--distpath", $distDir,
     "--workpath", (Join-Path $buildDir "pyinstaller"),
     "--specpath", (Join-Path $buildDir "spec"),
