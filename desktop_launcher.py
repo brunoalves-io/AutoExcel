@@ -87,11 +87,20 @@ def run_embedded_streamlit(port: int) -> int:
 
         write_log(f"Iniciando Streamlit {getattr(st, '__version__', '?')} em 127.0.0.1:{port}")
 
-        # st.App is Streamlit's supported programmatic server API and is more
-        # reliable inside a frozen executable than re-entering the Click CLI.
+        # st.App is Streamlit's supported programmatic server API. Pass the
+        # server options explicitly so a frozen executable never falls back to
+        # port 8501 or another machine-level Streamlit configuration.
         if hasattr(st, "App"):
             app = st.App(str(APP_FILE), debug=False)
-            app.run()
+            app.run(
+                config={
+                    "server.address": "127.0.0.1",
+                    "server.port": int(port),
+                    "server.headless": True,
+                    "server.fileWatcherType": "none",
+                    "browser.gatherUsageStats": False,
+                }
+            )
             return 0
 
         # Compatibility fallback for older Streamlit builds.
@@ -140,7 +149,7 @@ def start_streamlit(port: int) -> subprocess.Popen:
         stderr=subprocess.STDOUT,
         creationflags=creationflags,
     )
-    proc._autoexcel_log_handle = log_handle  # keep handle alive while child runs
+    proc._autoexcel_log_handle = log_handle
     return proc
 
 
