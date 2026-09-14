@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+.venv_v3/
+.venv_v4/
+venv/
+env/
+
+# Build / packaging
+.build/
+build/
+dist/
+*.spec
+*.exe
+.desktop_ready
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Generated spreadsheets and local test outputs
+*.xlsx
+!examples/*.xlsx
