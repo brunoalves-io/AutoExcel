@@ -228,12 +228,3 @@ As versões estáveis são publicadas na seção **Releases** deste repositório
 **AB Alves**
 
 Desenvolvido para automatizar a transformação de projetos de loteamentos em dados organizados e prontos para Excel.
-
----
-
-<div align="center">
-
-**AutoExcel by AB Alves**  
-*DXF in. Excel out.*
-
-</div>
